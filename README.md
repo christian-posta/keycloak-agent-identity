@@ -56,5 +56,15 @@ docker compose -f spire/docker-compose.yml logs
 ```
 
 
-After running, you can perform a DCR example with the following:
+After setting things up, you can test a DCR example with the following:
 
+```bash
+./spire/test-spiffe-drc.sh
+```
+
+
+To run a test of the client authentication:
+
+```bash
+./spire/test-spiffe-authentication.sh
+```
