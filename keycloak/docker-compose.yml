@@ -1,0 +1,24 @@
+
+services:
+  keycloak-idp:
+    image: quay.io/keycloak/keycloak:26.2.5
+    environment:
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: "localhost"
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./spiffe-svid-client-authenticator-1.0.0.jar:/opt/keycloak/providers/spiffe-svid-client-authenticator-1.0.0.jar:ro
+      - ./spiffe-dcr-spi-1.0.0.jar:/opt/keycloak/providers/spiffe-dcr-spi-1.0.0.jar:ro
+    command: start-dev
+    networks:
+      - keycloak-shared-network
+
+networks:
+  keycloak-shared-network:
+    driver: bridge 
