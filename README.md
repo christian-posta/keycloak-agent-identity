@@ -1,4 +1,4 @@
-# Keycloak Agent Identity
+# Keycloak and SPIRE for Agent Identity
 
 A development environment for integrating Keycloak with SPIRE for workload identity and MCP (Model Context Protocol) authentication.
 
