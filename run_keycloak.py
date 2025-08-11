@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--url", default=None, help="Keycloak URL")
     parser.add_argument("--summary", action="store_true", help="Show detailed summary")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
+    parser.add_argument("--down", action="store_true", help="Stop Keycloak containers")
     parser.add_argument("--help", "-h", action="store_true", help="Show help")
     
     # Parse known args to avoid errors with unrecognized arguments
@@ -33,6 +34,32 @@ def main():
         from boot_keycloak import main as keycloak_main
         sys.argv = ["boot_keycloak.py", "--help"]
         keycloak_main()
+        return
+    
+    # If --down is requested, stop Keycloak containers
+    if args.down:
+        import subprocess
+        os.chdir(keycloak_dir)
+        
+        print("🔽 Stopping Keycloak containers...")
+        try:
+            result = subprocess.run(
+                ["docker", "compose", "down"],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print("✅ Keycloak containers stopped successfully")
+            if args.verbose:
+                print(f"Command output: {result.stdout}")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to stop Keycloak containers: {e}")
+            if e.stderr:
+                print(f"Error details: {e.stderr}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Unexpected error stopping Keycloak: {e}")
+            sys.exit(1)
         return
     
     # Default to config.json at project root if no config specified
