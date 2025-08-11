@@ -2,6 +2,22 @@
 
 A development environment for integrating Keycloak with SPIRE for workload identity and MCP (Model Context Protocol) authentication.
 
+Specifically this project allows you to :
+
+* Quickly bootstrap a test Keycloak for local dev
+* Configure clients / authentication mechansims / flows / scopes / mappings
+* Pre-loads SPIs for DCR based on SPIFFE and Client Authentication based on SPIFFE
+* Based on these blogs:
+  * [Implementing MCP Dynamic Client Registration With SPIFFE and Keycloak](https://blog.christianposta.com/implementing-mcp-dynamic-client-registration-with-spiffe/)
+  * [Authenticating MCP OAuth Clients With SPIFFE and SPIRE](https://blog.christianposta.com/authenticating-mcp-oauth-clients-with-spiffe/)
+
+Uses these three projects as dependencies to implement the SPI / SPIRE plugins:
+
+* https://github.com/christian-posta/spiffe-svid-client-authenticator
+* https://github.com/christian-posta/spiffe-dcr-keycloak
+* https://github.com/christian-posta/spire-software-statements
+
+
 ## Quick Start
 
 ```bash
@@ -38,3 +54,7 @@ uv sync
 docker compose -f keycloak/docker-compose.yml logs
 docker compose -f spire/docker-compose.yml logs
 ```
+
+
+After running, you can perform a DCR example with the following:
+
