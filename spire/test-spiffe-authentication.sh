@@ -1,6 +1,40 @@
 #!/bin/bash
 set -e
 
+# Determine script directory and spire directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SPIRE_DIR="$SCRIPT_DIR"
+ORIGINAL_DIR="$(pwd)"
+
+# If script is being run from project root, adjust the spire directory path
+if [[ "$(basename "$SCRIPT_DIR")" == "spire" ]]; then
+    # Script is in spire directory, no change needed
+    SPIRE_DIR="$SCRIPT_DIR"
+else
+    # Script might be run from elsewhere, find spire directory
+    if [[ -d "$ORIGINAL_DIR/spire" ]]; then
+        SPIRE_DIR="$ORIGINAL_DIR/spire"
+    elif [[ -d "$(dirname "$SCRIPT_DIR")/spire" ]]; then
+        SPIRE_DIR="$(dirname "$SCRIPT_DIR")/spire"
+    else
+        echo "❌ Cannot find spire directory with docker-compose.yml"
+        exit 1
+    fi
+fi
+
+echo "🔧 Script directory: $SCRIPT_DIR"
+echo "🔧 SPIRE directory: $SPIRE_DIR"
+echo "🔧 Original directory: $ORIGINAL_DIR"
+echo
+
+# Quick validation that docker-compose.yml exists in SPIRE_DIR
+if [[ ! -f "$SPIRE_DIR/docker-compose.yml" ]]; then
+    echo "❌ docker-compose.yml not found in $SPIRE_DIR"
+    exit 1
+fi
+echo "✅ Found docker-compose.yml in $SPIRE_DIR"
+echo
+
 # Configuration
 WORKLOAD_SPIFFE_ID="spiffe://example.org/mcp-test-client"
 PARENT_SPIFFE_ID="spiffe://example.org/agent"
@@ -28,15 +62,15 @@ echo
 
 # 1. Check if workload entry exists and register if needed
 echo "Step 1: Checking/Registering SPIRE workload entry..."
-if docker compose exec spire-server /opt/spire/bin/spire-server entry show -spiffeID "$WORKLOAD_SPIFFE_ID" | grep -q "Entry ID"; then
+if (cd "$SPIRE_DIR" && docker compose exec spire-server /opt/spire/bin/spire-server entry show -spiffeID "$WORKLOAD_SPIFFE_ID") | grep -q "Entry ID"; then
   echo "✅ Workload entry already exists."
 else
   echo "📝 Registering workload entry..."
-  docker compose exec spire-server /opt/spire/bin/spire-server entry create \
+  (cd "$SPIRE_DIR" && docker compose exec spire-server /opt/spire/bin/spire-server entry create \
     -parentID "$PARENT_SPIFFE_ID" \
     -spiffeID "$WORKLOAD_SPIFFE_ID" \
     -jwtSVIDTTL 60 \
-    -selector unix:uid:0
+    -selector unix:uid:0)
   echo "✅ Workload entry created."
 fi
 prompt_continue
@@ -54,7 +88,7 @@ JWT_OUTPUT=""
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
   echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: Fetching JWT SVID..."
   
-  JWT_OUTPUT=$(docker compose exec spire-agent /opt/spire/bin/spire-agent api fetch jwt \
+  JWT_OUTPUT=$(cd "$SPIRE_DIR" && docker compose exec spire-agent /opt/spire/bin/spire-agent api fetch jwt \
     --audience "$AUDIENCE" \
     --spiffeID "$WORKLOAD_SPIFFE_ID" \
     --socketPath /opt/spire/sockets/workload_api.sock 2>&1)
@@ -163,10 +197,11 @@ if echo "$KEYCLOAK_RESPONSE" | grep -q "access_token"; then
   decode_jwt "$ACCESS_TOKEN"
   
   # Save token to file for easy use
-  echo "$ACCESS_TOKEN" > keycloak_access_token.txt
+  OUTPUT_FILE="$ORIGINAL_DIR/keycloak_access_token.txt"
+  echo "$ACCESS_TOKEN" > "$OUTPUT_FILE"
   echo
-  echo "💾 Access token saved to: keycloak_access_token.txt"
-  echo "You can use it with: export ACCESS_TOKEN=\$(cat keycloak_access_token.txt)"
+  echo "💾 Access token saved to: $OUTPUT_FILE"
+  echo "You can use it with: export ACCESS_TOKEN=\$(cat $OUTPUT_FILE)"
   
 else
   echo
