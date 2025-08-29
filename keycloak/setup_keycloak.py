@@ -488,6 +488,12 @@ class KeycloakSetup:
                 for role in client_config['roles']:
                     self.create_client_role(realm_name, client_id, role)
                     
+            # Add protocol mappers if specified
+            if 'protocolMappers' in client_config:
+                for mapper in client_config['protocolMappers']:
+                    if not self.add_client_protocol_mapper(realm_name, client_id, mapper):
+                        self.log('WARNING', f'Failed to add protocol mapper {mapper["name"]} to client {client_id}')
+                    
             return True
             
         except requests.exceptions.RequestException as e:
@@ -533,6 +539,12 @@ class KeycloakSetup:
                 response.raise_for_status()
                 
                 self.log('SUCCESS', f'Token exchange enabled for client {client_id}')
+            
+            # Add protocol mappers if specified (for existing clients)
+            if 'protocolMappers' in client_config:
+                for mapper in client_config['protocolMappers']:
+                    if not self.add_client_protocol_mapper(realm_name, client_id, mapper):
+                        self.log('WARNING', f'Failed to add protocol mapper {mapper["name"]} to existing client {client_id}')
             
             return True
             
@@ -595,6 +607,49 @@ class KeycloakSetup:
             
         except requests.exceptions.RequestException as e:
             self.log('ERROR', f'Failed to create role {role_name} in client {client_id}: {e}')
+            return False
+            
+    def add_client_protocol_mapper(self, realm_name: str, client_id: str, mapper_config: Dict[str, Any]) -> bool:
+        """Add a protocol mapper to a client."""
+        mapper_name = mapper_config['name']
+        self.log('INFO', f'Adding protocol mapper {mapper_name} to client {client_id}...')
+        
+        try:
+            client_uuid = self.get_client_uuid(realm_name, client_id)
+            if not client_uuid:
+                self.log('ERROR', f'Client {client_id} not found')
+                return False
+                
+            # Check if mapper exists
+            response = self.session.get(
+                f"{self.admin_base_url}/realms/{realm_name}/clients/{client_uuid}/protocol-mappers/models"
+            )
+            response.raise_for_status()
+            
+            existing_mappers = response.json()
+            if any(mapper['name'] == mapper_name for mapper in existing_mappers):
+                self.log('WARNING', f'Protocol mapper {mapper_name} already exists in client {client_id}, skipping creation')
+                return True
+                
+            # Create mapper
+            mapper_data = {
+                "name": mapper_name,
+                "protocol": mapper_config.get('protocol', 'openid-connect'),
+                "protocolMapper": mapper_config['type'],
+                "config": mapper_config['config']
+            }
+            
+            response = self.session.post(
+                f"{self.admin_base_url}/realms/{realm_name}/clients/{client_uuid}/protocol-mappers/models",
+                json=mapper_data
+            )
+            response.raise_for_status()
+            
+            self.log('SUCCESS', f'Protocol mapper {mapper_name} added to client {client_id}')
+            return True
+            
+        except requests.exceptions.RequestException as e:
+            self.log('ERROR', f'Failed to add protocol mapper {mapper_name} to client {client_id}: {e}')
             return False
             
     def assign_client_scope(self, realm_name: str, client_id: str, scope_name: str, assignment_type: str = 'default') -> bool:
@@ -1102,6 +1157,10 @@ class KeycloakSetup:
                 print(f"    - Custom attributes:")
                 for key, value in client['attributes'].items():
                     print(f"      • {key}: {value}")
+            if 'protocolMappers' in client:
+                print(f"    - Protocol mappers:")
+                for mapper in client['protocolMappers']:
+                    print(f"      • {mapper['name']} ({mapper['type']})")
                     
         print(f"\n{Colors.WHITE}Client Scopes:{Colors.NC}")
         for scope in config.get('clientScopes', []):

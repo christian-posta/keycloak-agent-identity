@@ -78,7 +78,23 @@
       },
       "clientSecret": "PLOs4j6ti521kb5ZVVVwi5GWi9eDYTwq",
       "webOrigins": ["http://localhost:3001"],
-      "redirectUris": ["http://localhost:3001/auth/callback"]
+      "redirectUris": ["http://localhost:3001/auth/callback"],
+      "protocolMappers": [
+        {
+          "name": "may_act_mapper",
+          "type": "oidc-hardcoded-claim-mapper",
+          "protocol": "openid-connect",
+          "config": {
+            "claim.name": "may_act",
+            "claim.value": "{\"sub\":\"spiffe://cluster.local/ns/default/sa/supply-chain-agent\"}",
+            "jsonType.label": "JSON",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "access.tokenResponse.claim": "false"
+          }
+        }
+      ]
     },      
     {
       "clientId": "echo-mcp-server",
@@ -103,6 +119,36 @@
         {
           "name": "read-only",
           "description": "Can read resources"
+        }
+      ],
+      "protocolMappers": [
+        {
+          "name": "mcp_server_claim",
+          "type": "oidc-hardcoded-claim-mapper",
+          "protocol": "openid-connect",
+          "config": {
+            "claim.name": "mcp.server.type",
+            "claim.value": "echo-server",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "access.tokenResponse.claim": "false"
+          }
+        },
+        {
+          "name": "mcp_capabilities_claim",
+          "type": "oidc-hardcoded-claim-mapper",
+          "protocol": "openid-connect",
+          "config": {
+            "claim.name": "mcp.capabilities",
+            "claim.value": "[\"tools\", \"prompts\", \"resources\"]",
+            "jsonType.label": "JSON",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "access.tokenResponse.claim": "false"
+          }
         }
       ]
     }
